@@ -223,8 +223,8 @@
     { t: 'Djibouti', p: [42.55, 12.05], large: true }
 ].map((e) => ({ ...e, xy: P(...e.p), xyE: P(...(e.etroit || e.p)) }));
   const MERS = [
-    { t: ['Mer', 'Rouge'], p: [41.35, 15.45], etroit: [42.24, 16.0] },
-    { t: ['Golfe', 'd’Aden'], p: [45.75, 12.42] }
+    { t: ['Mer', 'Rouge'], p: [41.05, 16.28], etroit: [42.24, 16.0] },
+    { t: ['Golfe', 'd’Aden'], p: [47.85, 12.35], etroit: [45.75, 12.42] }
   ].map((e) => ({ ...e, xy: P(...e.p), xyE: e.etroit ? P(...e.etroit) : P(...e.p) }));
   const VILLES = [
     { t: 'Sanaa', p: [44.21, 15.35], a: 'd', cap: true },
@@ -338,6 +338,8 @@
       <path d={TERRES} class="terre" />
       <path d={D.urban} class="bati" />
       <path d={D.roads} class="route" />
+      <path d={D.borders} class="frontiere-halo" />
+      <path d={D.yborder} class="frontiere-halo" />
       <path d={D.borders} class="frontiere" />
       <path d={D.yborder} class="frontiere" />
     </svg>
@@ -547,7 +549,8 @@
   .terre{fill:#fff}
   .bati{fill:#e9e3dc}
   .route{fill:none;stroke:#ebe6e0;stroke-width:.8;vector-effect:non-scaling-stroke;stroke-linejoin:round}
-  .frontiere{fill:none;stroke:#9b9b9b;stroke-width:.9;vector-effect:non-scaling-stroke;stroke-linejoin:round}
+  .frontiere-halo{fill:none;stroke:#8c8c90;stroke-opacity:.12;stroke-width:4;vector-effect:non-scaling-stroke;stroke-linejoin:round;stroke-linecap:round}
+  .frontiere{fill:none;stroke:#7b7b80;stroke-width:.8;vector-effect:non-scaling-stroke;stroke-linejoin:round;stroke-linecap:round}
 
   .ctrl{fill:#dd203c;fill-opacity:.15}
   .halo{fill:none;stroke:#dd203c;vector-effect:non-scaling-stroke;stroke-linejoin:round}
