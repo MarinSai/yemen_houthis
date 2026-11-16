@@ -1,0 +1,21 @@
+:root{
+  /* Bloc graphique pour iframe : titre, clé, date, carte animée, frise, légende, source.
+     Tout est aligné à gauche, sans cadre. Thème clair uniquement. */
+  --papier:#ffffff;
+  --encre:#141414;
+  --gris:#6e6e73;
+  --filet:#dcdcdc;
+  --terre:#f2f2f0;
+  --rouge:#dd203c;
+  --rouge-sombre:#a3122a;
+  --mer:#3d93c4;
+  --titre:"Sanomat","Sanomat Web","Playfair Display",Georgia,"Times New Roman",serif;
+  --texte:"National","National Web","Libre Franklin","Helvetica Neue",Arial,sans-serif;
+  --marge:20px;
+  color-scheme:light;
+}
+html.embarque{--marge:0px}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--papier);color:var(--encre);font-family:var(--texte);-webkit-text-size-adjust:100%}
+body{overflow-x:hidden}
+@media (max-width:400px){ :root{--marge:16px} html.embarque{--marge:0px} }
