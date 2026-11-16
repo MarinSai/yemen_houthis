@@ -589,7 +589,7 @@
   text.note-chiffre.gris{fill:#4a4a4f}
   text.note-texte{font-weight:400;paint-order:stroke;stroke:#fff;stroke-opacity:.9;stroke-linejoin:round}
 
-  .globe{position:absolute;top:12px;right:12px;width:96px;height:96px;border-radius:50%;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.22)}
+  .globe{position:absolute;top:12px;right:12px;width:86px;height:86px;border-radius:50%;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.22)}
   .globe svg{display:block;width:100%;height:100%}
   .g-mer{fill:#fff}
   .g-terre{fill:#d9d9d9}
@@ -629,6 +629,6 @@
     .quand{flex-direction:column;gap:1px;min-height:45px}
     .jour{font-size:20px}
     .net{font-size:13.5px}
-    .globe{width:78px;height:78px;top:10px;right:10px}
+    .globe{width:70px;height:70px;top:10px;right:10px}
   }
 </style>
