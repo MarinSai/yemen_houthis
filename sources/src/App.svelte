@@ -2,15 +2,12 @@
   import { onMount } from 'svelte';
   import D from './data.json';
   import G from './globe.json';
+  import { T, nombre } from './textes.js';
 
   /* ------------------------------------------------------------------
      Textes : tout ce qui se lit est ici.
      ------------------------------------------------------------------ */
-  const TITRE = 'Les Houthis se rapprochent d’Aden';
-  const CHAPO = 'Zones sous contrôle houthi au Yémen, du 6 octobre au 15 novembre 2026';
-  const SOURCE = 'Source : Institute for the Study of War, Critical Threats Project · Carte : Le Grand Continent';
-  const JOURS = ['6 octobre', '11 octobre', '18 octobre', '26 octobre', '1er novembre', '8 novembre', '15 novembre'];
-  const COURTS = ['6 oct.', '11 oct.', '18 oct.', '26 oct.', '1er nov.', '8 nov.', '15 nov.'];
+  const TITRE = T.titre, CHAPO = T.chapo, SOURCE = T.source, JOURS = T.jours, COURTS = T.courts;
   const ECARTS = [0, 5, 12, 20, 26, 33, 40]; // jours écoulés depuis le 6 octobre
 
   /* ------------------------------------------------------------------
@@ -96,7 +93,6 @@
     const i = Math.floor(pos), f = pos - i;
     return serie[i] + (serie[Math.min(6, i + 1)] - serie[i]) * f;
   };
-  const nombre = (n) => String(Math.abs(Math.round(n))).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
   const dizaine = (n) => Math.round(n / 10) * 10;
   $: net = Math.round(interp(D.area, E.pos) - D.area[0]);
   $: gainSud = dizaine(interp(D.gainSud, E.pos));
@@ -216,23 +212,23 @@
      Étiquettes
      ------------------------------------------------------------------ */
   const PAYS_NOMS = [
-    { t: 'Arabie saoudite', p: [44.6, 17.85], etroit: [44.0, 17.85] },
-    { t: 'Yémen', p: [46.8, 15.5], etroit: [45.98, 15.0] },
-    { t: 'Érythrée', p: [40.99, 14.36], large: true },
-    { t: 'Éthiopie', p: [40.96, 13.0], large: true },
-    { t: 'Djibouti', p: [42.55, 12.05], large: true }
+    { t: T.pays[0], p: [44.6, 17.85], etroit: [44.0, 17.85] },
+    { t: T.pays[1], p: [46.8, 15.5], etroit: [45.98, 15.0] },
+    { t: T.pays[2], p: [40.99, 14.36], large: true },
+    { t: T.pays[3], p: [40.96, 13.0], large: true },
+    { t: T.pays[4], p: [42.55, 12.05], large: true }
 ].map((e) => ({ ...e, xy: P(...e.p), xyE: P(...(e.etroit || e.p)) }));
   const MERS = [
-    { t: ['Mer', 'Rouge'], p: [41.05, 16.28], etroit: [42.24, 16.0] },
-    { t: ['Golfe', 'd’Aden'], p: [47.85, 12.35], etroit: [45.75, 12.42] }
+    { t: T.mers[0], p: [41.05, 16.28], etroit: [42.24, 16.0] },
+    { t: T.mers[1], p: [47.85, 12.35], etroit: [45.75, 12.42] }
   ].map((e) => ({ ...e, xy: P(...e.p), xyE: e.etroit ? P(...e.etroit) : P(...e.p) }));
   const VILLES = [
-    { t: 'Sanaa', p: [44.21, 15.35], a: 'd', cap: true },
-    { t: 'Taëz', p: [44.02, 13.58], a: 'h' },
-    { t: 'Marib', p: [45.32, 15.46], a: 'd' },
-    { t: 'Hodeïda', p: [42.95, 14.8], a: 'd' },
-    { t: 'Saada', p: [43.76, 16.94], a: 'd' },
-    { t: 'Mocha', p: [43.25, 13.32], a: 'g' }
+    { t: T.villes[0], p: [44.21, 15.35], a: 'd', cap: true },
+    { t: T.villes[1], p: [44.02, 13.58], a: 'h' },
+    { t: T.villes[2], p: [45.32, 15.46], a: 'd' },
+    { t: T.villes[3], p: [42.95, 14.8], a: 'd' },
+    { t: T.villes[4], p: [43.76, 16.94], a: 'd' },
+    { t: T.villes[5], p: [43.25, 13.32], a: 'g' }
   ].map((e) => ({ ...e, xy: P(...e.p) }));
   const etoile = (r) => {
     let d = '';
@@ -269,7 +265,6 @@
      puis affiché en <img> ; l'animation ne fait plus varier que l'opacité et l'échelle.
      ------------------------------------------------------------------ */
   let img = { fond: null, etats: [], pertes: [], frais: [] };
-  let urls = [];
   const STYLE_H = (d, u) => `<path d="${d}" fill="#dd203c" fill-opacity=".15"/>`;
   function svgDoc(W, Hh, vb, defs, corps) {
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${Hh}" viewBox="${vb}" preserveAspectRatio="xMidYMid slice"><defs>${defs}</defs>${corps}</svg>`;
@@ -277,10 +272,11 @@
   const flou = (id, sd, m = 40) => `<filter id="${id}" x="-${m}%" y="-${m}%" width="${100 + 2 * m}%" height="${100 + 2 * m}%"><feGaussianBlur stdDeviation="${sd.toFixed(3)}"/></filter>`;
   const hachure = (id, u, rot, coul, ep) => `<pattern id="${id}" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="scale(${u.toFixed(4)}) rotate(${rot})"><line x1="0" y1="0" x2="0" y2="5" stroke="${coul}" stroke-width="${ep}"/></pattern>`;
   const NS = 'vector-effect="non-scaling-stroke" stroke-linejoin="round"';
-  function cuire(svg) { const u = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' })); urls.push(u); return u; }
+  const cuire = (svg) => 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+  let generation = 0;
   async function preparer(W, Hh, vb, u) {
     const vbS = `${vb.x.toFixed(2)} ${vb.y.toFixed(2)} ${vb.w.toFixed(2)} ${vb.h.toFixed(2)}`;
-    const anciens = urls; urls = [];
+    const ma = ++generation;
     const fond = cuire(svgDoc(W, Hh, vbS, flou('r', 11 * u, 5),
       `<path d="${TERRES}" fill="#b9d6d3" filter="url(#r)"/><path d="${TERRES}" fill="#fff"/><path d="${D.urban}" fill="#e9e3dc"/>` +
       `<path d="${D.roads}" fill="none" stroke="#ebe6e0" stroke-width=".8" ${NS}/>` +
@@ -305,8 +301,7 @@
     // décodage avant affichage, pour éviter tout à-coup au premier passage
     const tous = [fond, ...etats, ...pertes.filter(Boolean), ...frais.flat().map((f) => f.src)];
     await Promise.all(tous.map((src) => { const im = new Image(); im.src = src; return im.decode ? im.decode().catch(() => {}) : Promise.resolve(); }));
-    img = { fond, etats, pertes, frais };
-    setTimeout(() => anciens.forEach((x) => URL.revokeObjectURL(x)), 1000);
+    if (ma === generation) img = { fond, etats, pertes, frais }; // seul le dernier calcul lancé s'affiche
   }
   let minuteur = 0, cleImg = '';
   $: if (cw > 0) {
@@ -362,22 +357,22 @@
   </header>
 
   <ul class="cle" aria-label="Clé de lecture">
-    <li><svg width="18" height="14" viewBox="0 0 18 14" aria-hidden="true"><rect x="1.5" y="1.5" width="15" height="11" rx="2" fill="rgba(221,32,60,.15)" stroke="#dd203c" stroke-width="1.3"/></svg>Contrôle houthi</li>
-    <li><svg width="18" height="14" viewBox="0 0 18 14" aria-hidden="true"><defs><filter id="cleflou" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="1.3"/></filter></defs><rect x="2.5" y="2.5" width="13" height="9" rx="2" fill="#dd203c" opacity=".85" filter="url(#cleflou)"/></svg>Gains depuis le 6 octobre</li>
-    <li><svg width="18" height="14" viewBox="0 0 18 14" aria-hidden="true"><defs><pattern id="cleh1" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="4" stroke="#dd203c" stroke-width="1.4"/></pattern></defs><rect x="1" y="1" width="16" height="12" rx="2" fill="url(#cleh1)"/></svg>Zone disputée</li>
-    <li><svg width="18" height="14" viewBox="0 0 18 14" aria-hidden="true"><defs><pattern id="cleh2" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)"><line x1="0" y1="0" x2="0" y2="4" stroke="#4a4a4f" stroke-width="1.4"/></pattern></defs><rect x="1" y="1" width="16" height="12" rx="2" fill="url(#cleh2)"/></svg>Terrain perdu</li>
+    <li><svg width="18" height="14" viewBox="0 0 18 14" aria-hidden="true"><rect x="1.5" y="1.5" width="15" height="11" rx="2" fill="rgba(221,32,60,.15)" stroke="#dd203c" stroke-width="1.3"/></svg>{T.cle[0]}</li>
+    <li><svg width="18" height="14" viewBox="0 0 18 14" aria-hidden="true"><defs><filter id="cleflou" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="1.3"/></filter></defs><rect x="2.5" y="2.5" width="13" height="9" rx="2" fill="#dd203c" opacity=".85" filter="url(#cleflou)"/></svg>{T.cle[1]}</li>
+    <li><svg width="18" height="14" viewBox="0 0 18 14" aria-hidden="true"><defs><pattern id="cleh1" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="4" stroke="#dd203c" stroke-width="1.4"/></pattern></defs><rect x="1" y="1" width="16" height="12" rx="2" fill="url(#cleh1)"/></svg>{T.cle[2]}</li>
+    <li><svg width="18" height="14" viewBox="0 0 18 14" aria-hidden="true"><defs><pattern id="cleh2" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)"><line x1="0" y1="0" x2="0" y2="4" stroke="#4a4a4f" stroke-width="1.4"/></pattern></defs><rect x="1" y="1" width="16" height="12" rx="2" fill="url(#cleh2)"/></svg>{T.cle[3]}</li>
   </ul>
 
   <div class="repere">
-    <p class="quand"><span class="jour">{JOURS[jour]} 2026</span>
-      {#if jour > 0}<span class="net" class:moins={net < 0}>{net < 0 ? '−' : '+'}{nombre(net)}&nbsp;km² depuis le 6 octobre</span>{/if}</p>
+    <p class="quand"><span class="jour">{T.date(JOURS[jour])}</span>
+      {#if jour > 0}<span class="net" class:moins={net < 0}>{net < 0 ? '−' : '+'}{nombre(net)}&nbsp;{T.net}</span>{/if}</p>
     <button class="rejouer" type="button" on:click={bouton}>
       {#if lecture}
-        <svg width="11" height="11" viewBox="0 0 14 14" aria-hidden="true"><rect x="2" y="1" width="3.6" height="12" fill="currentColor" /><rect x="8.4" y="1" width="3.6" height="12" fill="currentColor" /></svg>Pause
+        <svg width="11" height="11" viewBox="0 0 14 14" aria-hidden="true"><rect x="2" y="1" width="3.6" height="12" fill="currentColor" /><rect x="8.4" y="1" width="3.6" height="12" fill="currentColor" /></svg>{T.pause}
       {:else if fini}
-        <svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true"><path d="M13.2 8a5.2 5.2 0 1 1-1.6-3.75" fill="none" stroke="currentColor" stroke-width="1.6" /><path d="M12.9 1.2v3.6H9.3" fill="none" stroke="currentColor" stroke-width="1.6" /></svg>Rejouer
+        <svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true"><path d="M13.2 8a5.2 5.2 0 1 1-1.6-3.75" fill="none" stroke="currentColor" stroke-width="1.6" /><path d="M12.9 1.2v3.6H9.3" fill="none" stroke="currentColor" stroke-width="1.6" /></svg>{T.rejouer}
       {:else}
-        <svg width="11" height="11" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 1 L13 7 L3 13 Z" fill="currentColor" /></svg>Lire
+        <svg width="11" height="11" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 1 L13 7 L3 13 Z" fill="currentColor" /></svg>{T.lire}
       {/if}
     </button>
   </div>
@@ -388,7 +383,7 @@
     {#if img.fond}<img class="couche" src={img.fond} alt="" />{/if}
     <div class="voile"></div>
     <div class="couche" role="img" style="opacity:{E.entree.toFixed(3)}"
-         aria-label="Carte animée de l’ouest du Yémen montrant, relevé après relevé du 6 octobre au 15 novembre 2026, l’extension des zones contrôlées par les Houthis au sud-ouest, autour de Taëz, et leurs reculs autour de Marib et d’Al-Jawf.">
+         aria-label={T.carte}>
       {#each img.etats as src, i}
         {#if src}<img class="couche anime" {src} alt="" style="opacity:{E.opa[i].toFixed(3)};visibility:{E.opa[i] > 0.002 ? 'visible' : 'hidden'}" />{/if}
       {/each}
@@ -463,7 +458,7 @@
       <g transform="translate({ADEN[0]} {ADEN[1]})">
         <circle r={7 * upp} class="aden-anneau" stroke-width={1.3 * upp} />
         <circle r={3 * upp} class="aden-point" />
-        <text class="aden" font-size={(17 * upp).toFixed(3)} stroke-width={(3.6 * upp).toFixed(3)} x={11 * upp} y={5.5 * upp}>Aden</text>
+        <text class="aden" font-size={(17 * upp).toFixed(3)} stroke-width={(3.6 * upp).toFixed(3)} x={11 * upp} y={5.5 * upp}>{T.aden}</text>
       </g>
 
       {#each VILLES as e}
@@ -482,18 +477,18 @@
           
           <polyline class="filet fond" points={ptsTaez} /><polyline class="filet" points={ptsTaez} /><circle class="bout" cx={NOTE_TAEZ.cible[0]} cy={NOTE_TAEZ.cible[1]} r={2.3 * upp} />
           <g use:mesure={{ cb: (b) => (bTaez = b), cle: upp + '' + etroit }}>
-          <text class="note-titre" x={NOTE_TAEZ.xy[0]} y={NOTE_TAEZ.xy[1]} font-size={(14 * upp).toFixed(3)} stroke-width={(3.4 * upp).toFixed(3)}>Autour de Taëz</text>
+          <text class="note-titre" x={NOTE_TAEZ.xy[0]} y={NOTE_TAEZ.xy[1]} font-size={(14 * upp).toFixed(3)} stroke-width={(3.4 * upp).toFixed(3)}>{T.taez[0]}</text>
           <text class="note-chiffre" x={NOTE_TAEZ.xy[0]} y={NOTE_TAEZ.xy[1] + 18 * upp} font-size={(15 * upp).toFixed(3)} stroke-width={(3.4 * upp).toFixed(3)}>+{nombre(gainSud)}&nbsp;km²</text>
-          {#if !etroit}<text class="note-texte" x={NOTE_TAEZ.xy[0]} y={NOTE_TAEZ.xy[1] + 33 * upp} font-size={(12 * upp).toFixed(3)} stroke-width={(3.2 * upp).toFixed(3)}>gagnés par les Houthis</text>{/if}
+          {#if !etroit}<text class="note-texte" x={NOTE_TAEZ.xy[0]} y={NOTE_TAEZ.xy[1] + 33 * upp} font-size={(12 * upp).toFixed(3)} stroke-width={(3.2 * upp).toFixed(3)}>{T.taez[1]}</text>{/if}
           </g>
         </g>
         <g opacity={o.toFixed(3)}>
           
           <g opacity={E.pos >= 1.3 ? 1 : 0}><polyline class="filet fond" points={ptsNord} /><polyline class="filet" points={ptsNord} /><circle class="bout" cx={NOTE_NORD.cible[0]} cy={NOTE_NORD.cible[1]} r={2.3 * upp} /></g>
           <g use:mesure={{ cb: (b) => (bNord = b), cle: upp + '' + etroit }}>
-          <text class="note-titre" text-anchor="end" x={NOTE_NORD.xy[0]} y={NOTE_NORD.xy[1]} font-size={(14 * upp).toFixed(3)} stroke-width={(3.4 * upp).toFixed(3)}>Marib et Al-Jawf</text>
+          <text class="note-titre" text-anchor="end" x={NOTE_NORD.xy[0]} y={NOTE_NORD.xy[1]} font-size={(14 * upp).toFixed(3)} stroke-width={(3.4 * upp).toFixed(3)}>{T.nord[0]}</text>
           <text class="note-chiffre gris" text-anchor="end" x={NOTE_NORD.xy[0]} y={NOTE_NORD.xy[1] + 18 * upp} font-size={(15 * upp).toFixed(3)} stroke-width={(3.4 * upp).toFixed(3)}>−{nombre(perteNord)}&nbsp;km²</text>
-          {#if !etroit}<text class="note-texte" text-anchor="end" x={NOTE_NORD.xy[0]} y={NOTE_NORD.xy[1] + 33 * upp} font-size={(12 * upp).toFixed(3)} stroke-width={(3.2 * upp).toFixed(3)}>perdus par les Houthis</text>{/if}
+          {#if !etroit}<text class="note-texte" text-anchor="end" x={NOTE_NORD.xy[0]} y={NOTE_NORD.xy[1] + 33 * upp} font-size={(12 * upp).toFixed(3)} stroke-width={(3.2 * upp).toFixed(3)}>{T.nord[1]}</text>{/if}
           </g>
         </g>
       {/if}
@@ -502,8 +497,8 @@
         <g opacity={o.toFixed(3)}>
           
           <polyline class="filet fond" points={ptsDispute} /><polyline class="filet" points={ptsDispute} /><circle class="bout" cx={NOTE_DISPUTE.cible[0]} cy={NOTE_DISPUTE.cible[1]} r={2.3 * upp} />
-          <text class="note-titre" text-anchor="middle" x={NOTE_DISPUTE.coude[0]} y={NOTE_DISPUTE.coude[1]} font-size={(14 * upp).toFixed(3)} stroke-width={(3.4 * upp).toFixed(3)}>+1&nbsp;800&nbsp;km² disputés</text>
-          <text class="note-texte" text-anchor="middle" x={NOTE_DISPUTE.coude[0]} y={NOTE_DISPUTE.coude[1] + 15 * upp} font-size={(12 * upp).toFixed(3)} stroke-width={(3.2 * upp).toFixed(3)}>entre le 8 et le 15 novembre</text>
+          <text class="note-titre" text-anchor="middle" x={NOTE_DISPUTE.coude[0]} y={NOTE_DISPUTE.coude[1]} font-size={(14 * upp).toFixed(3)} stroke-width={(3.4 * upp).toFixed(3)}>+{nombre(1800)}&nbsp;{T.dispute[0]}</text>
+          <text class="note-texte" text-anchor="middle" x={NOTE_DISPUTE.coude[0]} y={NOTE_DISPUTE.coude[1] + 15 * upp} font-size={(12 * upp).toFixed(3)} stroke-width={(3.2 * upp).toFixed(3)}>{T.dispute[1]}</text>
         </g>
       {/if}
     </svg>
@@ -528,7 +523,7 @@
         {@const montre = !etroit || i === jour || (i === 0 && jour >= 2) || (i === 6 && jour <= 4)}
         <li style="left:{(ECARTS[i] / 40) * 100}%" class:premier={i === 0} class:dernier={i === 6}>
           <button type="button" class:passe={E.pos >= i - 0.001} class:actif={jour === i} on:click={() => aller(i)}
-                  aria-label="Afficher la situation au {JOURS[i]}" aria-current={jour === i ? 'true' : null}>
+                  aria-label={T.aller(JOURS[i])} aria-current={jour === i ? 'true' : null}>
             <span class="grain"></span><span class="nom" class:cache={!montre}>{c}</span>
           </button>
         </li>
