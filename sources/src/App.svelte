@@ -216,7 +216,7 @@
      Étiquettes
      ------------------------------------------------------------------ */
   const PAYS_NOMS = [
-    { t: 'Arabie saoudite', p: [44.6, 17.85] },
+    { t: 'Arabie saoudite', p: [44.6, 17.85], etroit: [44.0, 17.85] },
     { t: 'Yémen', p: [46.8, 15.5], etroit: [45.98, 15.0] },
     { t: 'Érythrée', p: [40.99, 14.36], large: true },
     { t: 'Éthiopie', p: [40.96, 13.0], large: true },
@@ -599,7 +599,7 @@
   .echelle i{display:block;height:1px;background:#5a5a5e}
 
   /* frise : un fil, des grains, un curseur qui glisse */
-  .frise{position:relative;height:50px;margin:2px 7px 0}
+  .frise{position:relative;height:50px;margin:2px 13px 0}
   .fil{position:absolute;left:0;right:0;top:10px;height:1px;background:#cfcfcf}
   .fil i{position:absolute;left:0;top:-.5px;height:2px;background:var(--rouge);border-radius:1px}
   .fil b{position:absolute;top:.5px;width:13px;height:13px;margin:-6.5px 0 0 -6.5px;border-radius:50%;background:var(--rouge);box-shadow:0 0 0 5px rgba(221,32,60,.16)}
