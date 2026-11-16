@@ -263,6 +263,61 @@
   $: ptsNord = bNord ? `${bNord.x + bNord.width / 2},${bNord.y + bNord.height + 4 * upp} ${bNord.x + bNord.width / 2},${NOTE_NORD.cible[1]} ${NOTE_NORD.cible[0]},${NOTE_NORD.cible[1]}` : '';
   $: ptsDispute = `${NOTE_DISPUTE.coude[0]},${NOTE_DISPUTE.coude[1] - 14 * upp} ${NOTE_DISPUTE.cible[0]},${NOTE_DISPUTE.cible[1]}`;
 
+
+  /* ------------------------------------------------------------------
+     Images précalculées : chaque état figé est dessiné une fois en SVG autonome,
+     puis affiché en <img> ; l'animation ne fait plus varier que l'opacité et l'échelle.
+     ------------------------------------------------------------------ */
+  let img = { fond: null, etats: [], pertes: [], frais: [] };
+  let urls = [];
+  const STYLE_H = (d, u) => `<path d="${d}" fill="#dd203c" fill-opacity=".15"/>`;
+  function svgDoc(W, Hh, vb, defs, corps) {
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${Hh}" viewBox="${vb}" preserveAspectRatio="xMidYMid slice"><defs>${defs}</defs>${corps}</svg>`;
+  }
+  const flou = (id, sd, m = 40) => `<filter id="${id}" x="-${m}%" y="-${m}%" width="${100 + 2 * m}%" height="${100 + 2 * m}%"><feGaussianBlur stdDeviation="${sd.toFixed(3)}"/></filter>`;
+  const hachure = (id, u, rot, coul, ep) => `<pattern id="${id}" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="scale(${u.toFixed(4)}) rotate(${rot})"><line x1="0" y1="0" x2="0" y2="5" stroke="${coul}" stroke-width="${ep}"/></pattern>`;
+  const NS = 'vector-effect="non-scaling-stroke" stroke-linejoin="round"';
+  function cuire(svg) { const u = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' })); urls.push(u); return u; }
+  async function preparer(W, Hh, vb, u) {
+    const vbS = `${vb.x.toFixed(2)} ${vb.y.toFixed(2)} ${vb.w.toFixed(2)} ${vb.h.toFixed(2)}`;
+    const anciens = urls; urls = [];
+    const fond = cuire(svgDoc(W, Hh, vbS, flou('r', 11 * u, 5),
+      `<path d="${TERRES}" fill="#b9d6d3" filter="url(#r)"/><path d="${TERRES}" fill="#fff"/><path d="${D.urban}" fill="#e9e3dc"/>` +
+      `<path d="${D.roads}" fill="none" stroke="#ebe6e0" stroke-width=".8" ${NS}/>` +
+      [D.borders, D.yborder].map((d) => `<path d="${d}" fill="none" stroke="#8c8c90" stroke-opacity=".12" stroke-width="4" stroke-linecap="round" ${NS}/>`).join('') +
+      [D.borders, D.yborder].map((d) => `<path d="${d}" fill="none" stroke="#7b7b80" stroke-width=".8" stroke-linecap="round" ${NS}/>`).join('')));
+    const defsEtat = flou('f', 2.2 * u) + hachure('hd', u, 45, '#dd203c', 1.4) + hachure('hp', u, -45, '#4a4a4f', 1.3);
+    const etats = D.H.map((d, i) => cuire(svgDoc(W, Hh, vbS, defsEtat,
+      `<path d="${d}" fill="#dd203c" fill-opacity=".15"/>` +
+      GCUM[i].map((g) => `<path d="${g}" fill="#dd203c" fill-opacity=".66" filter="url(#f)"/>`).join('') +
+      (D.lcum[i] ? `<path d="${D.lcum[i]}" fill="url(#hp)" fill-opacity=".75" stroke="#4a4a4f" stroke-opacity=".5" stroke-width=".8" ${NS}/>` : '') +
+      `<path d="${D.C[i]}" fill="url(#hd)" fill-opacity=".6"/>` +
+      `<path d="${d}" fill="none" stroke="#dd203c" stroke-opacity=".06" stroke-width="9" ${NS}/>` +
+      `<path d="${d}" fill="none" stroke="#dd203c" stroke-opacity=".12" stroke-width="5" ${NS}/>` +
+      `<path d="${d}" fill="none" stroke="#dd203c" stroke-opacity=".8" stroke-width="1.2" ${NS}/>`)));
+    const pertes = SEMAINES.map((w) => w.lossAll ? cuire(svgDoc(W, Hh, vbS, hachure('hp', u, -45, '#4a4a4f', 1.3),
+      `<path d="${w.lossAll}" fill="url(#hp)" fill-opacity=".95" stroke="#4a4a4f" stroke-opacity=".95" stroke-width="1.2" ${NS}/>`)) : null);
+    const frais = SEMAINES.map((w) => w.gain.map((c) => ({
+      src: cuire(svgDoc(W, Hh, vbS, flou('h', 9 * u, 90) + flou('v', 3.2 * u, 60),
+        `<path d="${c.d}" fill="#dd203c" fill-opacity=".96" opacity=".55" filter="url(#h)"/><path d="${c.d}" fill="#dd203c" fill-opacity=".96" filter="url(#v)"/>`)),
+      ox: (c.o[0] - vb.x) / u, oy: (c.o[1] - vb.y) / u
+    })));
+    // décodage avant affichage, pour éviter tout à-coup au premier passage
+    const tous = [fond, ...etats, ...pertes.filter(Boolean), ...frais.flat().map((f) => f.src)];
+    await Promise.all(tous.map((src) => { const im = new Image(); im.src = src; return im.decode ? im.decode().catch(() => {}) : Promise.resolve(); }));
+    img = { fond, etats, pertes, frais };
+    setTimeout(() => anciens.forEach((x) => URL.revokeObjectURL(x)), 1000);
+  }
+  let minuteur = 0, cleImg = '';
+  $: if (cw > 0) {
+    const cle = cw + (etroit ? 'e' : 'l');
+    if (cle !== cleImg) {
+      cleImg = cle; clearTimeout(minuteur);
+      const W = cw, Hh = Math.round(cw / ratio), v = vb, u = upp;
+      minuteur = setTimeout(() => preparer(W, Hh, v, u), img.fond ? 180 : 0);
+    }
+  }
+
   /* ------------------------------------------------------------------
      Lecture
      ------------------------------------------------------------------ */
@@ -329,39 +384,30 @@
 
   <div class="scene" bind:this={scene} bind:clientWidth={cw} style="aspect-ratio:{etroit ? '7 / 10' : '7 / 5'}">
     {#if cw > 0}
-    <!-- 1. fond : ne change jamais, dessiné une seule fois -->
+    <!-- 1-2. fond et états figés : images précalculées, fondues par le compositeur (fluide sur téléphone) -->
+    {#if img.fond}<img class="couche" src={img.fond} alt="" />{/if}
+    <div class="voile"></div>
+    <div class="couche" role="img" style="opacity:{E.entree.toFixed(3)}"
+         aria-label="Carte animée de l’ouest du Yémen montrant, relevé après relevé du 6 octobre au 15 novembre 2026, l’extension des zones contrôlées par les Houthis au sud-ouest, autour de Taëz, et leurs reculs autour de Marib et d’Al-Jawf.">
+      {#each img.etats as src, i}
+        {#if src}<img class="couche anime" {src} alt="" style="opacity:{E.opa[i].toFixed(3)};visibility:{E.opa[i] > 0.002 ? 'visible' : 'hidden'}" />{/if}
+      {/each}
+      {#each img.pertes as src, k}
+        {#if src}<img class="couche anime" {src} alt="" style="opacity:{E.k === k ? (E.frais * borne(E.rev * 1.4)).toFixed(3) : 0};visibility:{E.k === k && E.frais > 0.002 ? 'visible' : 'hidden'}" />{/if}
+      {/each}
+      {#each img.frais as sem, k}
+        {#each sem as f}
+          {@const on = E.k === k && E.frais > 0.002}
+          <img class="couche anime" src={f.src} alt=""
+               style="transform-origin:{f.ox.toFixed(1)}px {f.oy.toFixed(1)}px;transform:scale({on ? (0.25 + 0.75 * E.rev).toFixed(3) : 0.25});opacity:{on ? (E.frais * borne(E.rev * 2.2)).toFixed(3) : 0};visibility:{on ? 'visible' : 'hidden'}" />
+        {/each}
+      {/each}
+    </div>
+
+    <!-- 2 bis. ondes et flèches : petites formes dessinées en direct -->
     <svg class="couche" viewBox={vbTxt} preserveAspectRatio="xMidYMid slice" aria-hidden="true">
       <defs>
-        <filter id="rivage" x="-5%" y="-5%" width="110%" height="110%"><feGaussianBlur stdDeviation={(11 * upp).toFixed(3)} /></filter>
-      </defs>
-      <path d={TERRES} class="rivage" filter="url(#rivage)" />
-      <path d={TERRES} class="terre" />
-      <path d={D.urban} class="bati" />
-      <path d={D.roads} class="route" />
-      <path d={D.borders} class="frontiere-halo" />
-      <path d={D.yborder} class="frontiere-halo" />
-      <path d={D.borders} class="frontiere" />
-      <path d={D.yborder} class="frontiere" />
-    </svg>
-
-    <div class="voile"></div>
-
-    <!-- 2. contrôle houthi : un groupe par relevé, en fondu enchaîné -->
-    <svg class="couche" viewBox={vbTxt} preserveAspectRatio="xMidYMid slice" role="img"
-         aria-label="Carte animée de l’ouest du Yémen montrant, relevé après relevé du 6 octobre au 15 novembre 2026, l’extension des zones contrôlées par les Houthis au sud-ouest, autour de Taëz, et leurs reculs autour de Marib et d’Al-Jawf.">
-      <defs>
-        <filter id="flou" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation={(2.2 * upp).toFixed(3)} /></filter>
-        <filter id="flou-vif" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation={(3.2 * upp).toFixed(3)} /></filter>
-        <filter id="halo-vif" x="-90%" y="-90%" width="280%" height="280%"><feGaussianBlur stdDeviation={(9 * upp).toFixed(3)} /></filter>
-        <radialGradient id="disque"><stop offset="0" stop-color="#fff" /><stop offset=".55" stop-color="#fff" /><stop offset="1" stop-color="#fff" stop-opacity="0" /></radialGradient>
-        <pattern id="h-dispute" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="scale({upp.toFixed(4)}) rotate(45)"><line x1="0" y1="0" x2="0" y2="5" stroke="#dd203c" stroke-width="1.4" /></pattern>
-        <pattern id="h-perdu" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="scale({upp.toFixed(4)}) rotate(-45)"><line x1="0" y1="0" x2="0" y2="5" stroke="#4a4a4f" stroke-width="1.3" /></pattern>
         {#if E.k >= 0}
-          {#each SEMAINES[E.k].gain as c (c.id)}
-            <mask id={c.id} maskUnits="userSpaceOnUse" x={c.o[0] - 3 * c.r} y={c.o[1] - 3 * c.r} width={6 * c.r} height={6 * c.r}>
-              <circle cx={c.o[0]} cy={c.o[1]} r={(0.5 + (c.r / 0.55) * E.rev).toFixed(2)} fill="url(#disque)" />
-            </mask>
-          {/each}
           {#each AXES_SEM[E.k] as a (a.id)}
             <linearGradient id={'g' + a.id} gradientUnits="userSpaceOnUse" x1={a.S[0]} y1={a.S[1]} x2={a.F[0]} y2={a.F[1]}>
               <stop offset="0" stop-color="#a3122a" stop-opacity="0" /><stop offset=".5" stop-color="#a3122a" /><stop offset="1" stop-color="#8f0f24" />
@@ -374,35 +420,7 @@
           </linearGradient>
         {/each}
       </defs>
-
-      <g opacity={E.entree.toFixed(3)}>
-        {#each D.H as d, i}
-          {#if E.opa[i] > 0.002}
-            <g opacity={E.opa[i].toFixed(3)}>
-              <path {d} class="ctrl" />
-              {#each GCUM[i] as g}<path d={g} class="gain" filter="url(#flou)" />{/each}
-              {#if D.lcum[i]}<path d={D.lcum[i]} class="perdu" />{/if}
-              <path d={D.C[i]} class="dispute" />
-              <path {d} class="halo h3" /><path {d} class="halo h2" /><path {d} class="halo h1" />
-            </g>
-          {/if}
-        {/each}
-      </g>
-
-      <!-- le relevé en cours : le rouge se répand depuis l'ancienne ligne -->
       {#if E.k >= 0}
-        {#if E.frais > 0.002}
-          <g opacity={E.frais.toFixed(3)}>
-            {#if SEMAINES[E.k].lossAll}<path d={SEMAINES[E.k].lossAll} class="perdu vif" opacity={borne(E.rev * 1.4).toFixed(3)} />{/if}
-            <g filter="url(#halo-vif)" opacity=".55">
-              {#each SEMAINES[E.k].gain as c (c.id)}<path d={c.d} class="gain vif" mask="url(#{c.id})" />{/each}
-            </g>
-            <g filter="url(#flou-vif)">
-              {#each SEMAINES[E.k].gain as c (c.id)}<path d={c.d} class="gain vif" mask="url(#{c.id})" />{/each}
-            </g>
-          </g>
-        {/if}
-        <!-- ondes : attirent l'œil là où la ligne bouge -->
         {#each SEMAINES[E.k].ondes as o}
           {#each [0, 0.45] as retard}
             {@const p = borne((E.onde - retard) / 1.25)}
@@ -545,23 +563,9 @@
   .scene{position:relative;line-height:0;overflow:hidden;background:#e7f1f0}
   .voile{position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 18px 10px #fff}
   .couche{position:absolute;inset:0;display:block;width:100%;height:100%}
-  .rivage{fill:#b9d6d3}
-  .terre{fill:#fff}
-  .bati{fill:#e9e3dc}
-  .route{fill:none;stroke:#ebe6e0;stroke-width:.8;vector-effect:non-scaling-stroke;stroke-linejoin:round}
-  .frontiere-halo{fill:none;stroke:#8c8c90;stroke-opacity:.12;stroke-width:4;vector-effect:non-scaling-stroke;stroke-linejoin:round;stroke-linecap:round}
-  .frontiere{fill:none;stroke:#7b7b80;stroke-width:.8;vector-effect:non-scaling-stroke;stroke-linejoin:round;stroke-linecap:round}
+  img.couche{object-fit:fill;pointer-events:none;user-select:none}
+  .anime{will-change:opacity,transform;backface-visibility:hidden}
 
-  .ctrl{fill:#dd203c;fill-opacity:.15}
-  .halo{fill:none;stroke:#dd203c;vector-effect:non-scaling-stroke;stroke-linejoin:round}
-  .halo.h3{stroke-width:9;stroke-opacity:.06}
-  .halo.h2{stroke-width:5;stroke-opacity:.12}
-  .halo.h1{stroke-width:1.2;stroke-opacity:.8}
-  .gain{fill:#dd203c;fill-opacity:.66}
-  .gain.vif{fill-opacity:.96}
-  .dispute{fill:url(#h-dispute);fill-opacity:.6}
-  .perdu{fill:url(#h-perdu);fill-opacity:.75;stroke:#4a4a4f;stroke-opacity:.5;stroke-width:.8;vector-effect:non-scaling-stroke}
-  .perdu.vif{fill-opacity:.95;stroke-opacity:.95;stroke-width:1.2}
   .onde{fill:none;stroke:#dd203c;stroke-width:1.6;vector-effect:non-scaling-stroke}
   .onde.recul{stroke:#4a4a4f}
   .fleche{stroke:#fff;stroke-opacity:.92;stroke-width:1.1;vector-effect:non-scaling-stroke;paint-order:stroke;stroke-linejoin:round}
